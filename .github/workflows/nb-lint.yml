@@ -1,0 +1,30 @@
+name: Notebook Lint
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ v2b-dev ]
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate notebook JSON
+        run: |
+          pipx run nbformat --validate $(git ls-files "*.ipynb" || true)
+      - name: Ensure minimal outputs
+        run: |
+          python - << 'PY'
+          import json, sys, pathlib
+          bad=[]
+          for p in pathlib.Path(".").rglob("*.ipynb"):
+              with open(p, "r", encoding="utf-8") as f:
+                  nb=json.load(f)
+              for c in nb.get("cells",[]):
+                  if c.get("outputs"):
+                      bad.append(str(p)); break
+          if bad:
+              print("Notebooks with outputs (strip before commit):")
+              print("\n".join(sorted(set(bad))))
+              sys.exit(1)
+          PY
