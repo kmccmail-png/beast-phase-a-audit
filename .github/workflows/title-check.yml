@@ -1,0 +1,29 @@
+name: Notebook Title Check
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ v2b-dev ]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify @title headers present in modified notebooks
+        run: |
+          set -e
+          MODS=$(git diff --name-only HEAD~1 HEAD | grep -E '\.ipynb$' || true)
+          if [ -z "$MODS" ]; then
+            echo "No modified notebooks."
+            exit 0
+          fi
+          FAILS=""
+          for f in $MODS; do
+            if ! grep -q '## @title' "$f"; then
+              FAILS="$FAILS\n$f"
+            fi
+          done
+          if [ -n "$FAILS" ]; then
+            echo -e "Missing '## @title' in notebooks:$FAILS"
+            exit 1
+          fi
